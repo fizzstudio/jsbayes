@@ -17,21 +17,21 @@
   },
   "homepage": "https://github.com/fizzstudio/jsbayes#readme",
   "type": "module",
-  "module": "dist/jsbayes.esm.js",
   "scripts": {
-    "build": "rollup -c",
+    "build": "tsc && api-extractor run --local --verbose",
+    "roll": "rollup -c",
     "dev": "rollup -c -w",
     "test": "ava test.js",
+    "doc": "api-documenter markdown --input-folder ./temp --output-folder ./docs",
     "pubpatch": "npm version patch && npm publish",
     "pubminor": "npm version minor && npm publish",
     "pubmajor": "npm version major && npm publish"
   },
   "files": [
-    "src/main.js",
-    "src/main.d.ts"
+    "dist"
   ],
-  "types": "./src/main.d.ts",
-  "exports": "./src/main.js",
+  "types": "./dist/jsbayes.d.ts",
+  "exports": "./dist/main.js",
   "keywords": [
     "bayesian",
     "network",
@@ -44,16 +44,13 @@
     "casual"
   ],
   "devDependencies": {
-    "@rollup/plugin-eslint": "^8.0.1",
-    "@rollup/plugin-node-resolve": "^13.0.6",
-    "ava": "^5.1.0",
-    "browser-sync": "^2.27.10",
-    "chai": "^3.5.0",
-    "eslint": "^8.3.0",
-    "jsdoc": "^3.6.7",
-    "kis-jsdoc-plugin": "^1.4.9",
-    "mocha": "^10.2.0",
-    "rollup": "^2.60.0",
-    "typescript": "^4.9.4"
+    "@rollup/plugin-eslint": "^9.0.4",
+    "@rollup/plugin-node-resolve": "^15.1.0",
+    "ava": "^5.3.1",
+    "eslint": "^8.44.0",
+    "rollup": "^3.26.0",
+    "typescript": "^5.1.6",
+    "@microsoft/api-extractor": "^7.36.0",
+    "@microsoft/api-documenter": "^7.22.22"
   }
 }
