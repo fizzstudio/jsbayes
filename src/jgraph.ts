@@ -1,6 +1,10 @@
 
 import { initCptWithParents, JNode } from "./jnode.js";
 import { type WorkerMessage, type WorkerResult } from "./worker.js";
+import workerCode from './worker_code.js';
+
+
+const workerDivId = '__jsbayes_web_worker__';
 
 /** @public */
 export class JGraph {
@@ -9,6 +13,16 @@ export class JGraph {
   public saveSamples = false;
   public samples: { [nodeName: string]: any }[] = [];
   public nodeMap: { [nodeName: string]: JNode } = {};
+
+  constructor() {
+    if (!document.getElementById(workerDivId)) {
+      const div = document.createElement('div');
+      div.id = workerDivId;
+      div.style.display = 'none';
+      div.textContent = workerCode;
+      document.body.append(div);
+    }
+  }
 
   reinit() {
     this.nodes.forEach(n => {
@@ -150,11 +164,13 @@ export class JGraph {
     return msg;
   }
 
-  async sampleWithWorker(workerPath: string, samples: number): Promise<void> {
-    // XXX Can Rollup be made to just copy worker.js from 
-    // the node_modules directory?
+  async sampleWithWorker(samples: number): Promise<void> {
     return new Promise((res, rej) => {
-      const worker = new Worker(workerPath, {type: 'module'});
+      const blob = new Blob([
+        document.getElementById(workerDivId)!.textContent!],
+        { type: 'text/javascript' }
+      );
+      const worker = new Worker(URL.createObjectURL(blob), {type: 'module'});
       worker.onerror = e => {
         console.error(e);
       };
