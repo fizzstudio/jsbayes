@@ -249,12 +249,149 @@ class JNode {
     }
 }
 
+// This function will never be executed! It simply serves as a wrapper
+// for the worker module source code. 
+function workerCodeWrapper() {
+    // Since we embed the worker script code within the web page where the module
+    // code is running, we need minimal versions of JNode and JGraph here
+    // (so we don't need to serve them separately). I fully recognize the
+    // awfulness of this situation.
+    class JNode {
+        name;
+        values;
+        _sampledLw;
+        wasSampled = false;
+        parents = [];
+        cpt = [];
+        value = -1;
+        dirty = false;
+        isObserved = false;
+        g;
+        constructor(name, values) {
+            this.name = name;
+            this.values = values;
+        }
+        initSampleLw() {
+            this._sampledLw = undefined;
+        }
+        sampleLw() {
+            if (this.wasSampled) {
+                return 1;
+            }
+            const parentNodes = this.parents.map(pName => this.g.nodeMap[pName]);
+            let fa = 1;
+            parentNodes.forEach(pa => {
+                fa *= pa.sampleLw();
+            });
+            this.wasSampled = true;
+            let dh = this.cpt;
+            parentNodes.forEach(pa => {
+                dh = dh[pa.value];
+            });
+            if (this.value != -1) {
+                fa *= dh[this.value];
+            }
+            else {
+                let fv = Math.random();
+                for (let h = 0; h < dh.length; h++) {
+                    fv -= dh[h];
+                    if (fv < 0) {
+                        this.value = h;
+                        break;
+                    }
+                }
+            }
+            return fa;
+        }
+        saveSampleLw(f) {
+            if (!this._sampledLw) {
+                this._sampledLw = new Array(this.values.length);
+                for (let h = this.values.length - 1; h >= 0; h--) {
+                    this._sampledLw[h] = 0;
+                }
+            }
+            this._sampledLw[this.value] += f;
+        }
+    }
+    class JGraph {
+        nodes = [];
+        nodeMap = {};
+        sample(samples) {
+            for (let h = this.nodes.length - 1; h >= 0; h--) {
+                this.nodes[h].initSampleLw();
+            }
+            let lwSum = 0;
+            for (let count = 0; count < samples; count++) {
+                for (let h = this.nodes.length - 1; h >= 0; h--) {
+                    const n = this.nodes[h];
+                    if (!n.isObserved) {
+                        n.value = -1;
+                    }
+                    n.wasSampled = false;
+                }
+                const fa = this.nodes.reduceRight((prod, n) => prod * n.sampleLw(), 1);
+                lwSum += fa;
+                for (let h = this.nodes.length - 1; h >= 0; h--) {
+                    const n = this.nodes[h];
+                    n.saveSampleLw(fa);
+                }
+            }
+            return lwSum;
+        }
+    }
+    function toGraph(msg) {
+        // The structured clone algorithm ensures that all nodes we receive here
+        // point to the same graph instance. However, none of these objects
+        // (nodes or the graph) are hooked up to their proper prototypes.
+        // So we simply create new instances that do have the correct prototypes,
+        // and give them the same values we got here.
+        const g = Object.create(JGraph.prototype, Object.getOwnPropertyDescriptors(msg.graph));
+        const nodes = g.nodes.map(n => {
+            const newNode = Object.create(JNode.prototype, Object.getOwnPropertyDescriptors(n));
+            newNode.g = g;
+            g.nodeMap[n.name] = newNode;
+            return newNode;
+        });
+        g.nodes = nodes;
+        return g;
+    }
+    function sample(msg) {
+        const g = toGraph(msg);
+        g.sample(msg.samples);
+        const result = {};
+        for (let i = 0; i < g.nodes.length; i++) {
+            result[g.nodes[i].name] = g.nodes[i];
+        }
+        self.postMessage(result);
+    }
+    self.onmessage = function (e) {
+        sample(e.data);
+    };
+}
+
+//import workerCode from './worker_code.js';
+// Remove the code lines declaring the wrapper function from the
+// worker module source code
+const workerCode = workerCodeWrapper.toString().trim().split('\n').slice(1, -1).join('\n');
+console.log('worker code', workerCode);
+const workerBlob = new Blob([workerCode], { type: 'text/javascript' });
+const workerURL = URL.createObjectURL(workerBlob);
+//const workerDivId = '__jsbayes_web_worker__';
 /** @public */
 class JGraph {
     nodes = [];
     saveSamples = false;
     samples = [];
     nodeMap = {};
+    /*constructor() {
+      if (!document.getElementById(workerDivId)) {
+        const div = document.createElement('div');
+        div.id = workerDivId;
+        div.style.display = 'none';
+        div.textContent = workerCode;
+        document.body.append(div);
+      }
+    }*/
     reinit() {
         this.nodes.forEach(n => {
             if (n.dirty === undefined || n.dirty) {
@@ -378,11 +515,13 @@ class JGraph {
         };
         return msg;
     }
-    async sampleWithWorker(workerPath, samples) {
-        // XXX Can Rollup be made to just copy worker.js from 
-        // the node_modules directory?
-        return new Promise((res, rej) => {
-            const worker = new Worker(workerPath, { type: 'module' });
+    async sampleWithWorker(samples) {
+        return new Promise(res => {
+            //const blob = new Blob([document.getElementById(workerDivId)!.textContent!],
+            //const blob = new Blob([workerCode],
+            //  { type: 'text/javascript' }
+            //);
+            const worker = new Worker(workerURL, { type: 'module' });
             worker.onerror = e => {
                 console.error(e);
             };
@@ -437,13 +576,13 @@ class IntegrationTest {
           g.unobserve(name);
           val.disabled = true;
         }
-        await g.sampleWithWorker('../dist/worker.js', 10000);
+        await g.sampleWithWorker(10000);
         this.updateProbs(g);
       });
       val.addEventListener('change', async () => {
         g.observe(name, val.checked ? 'true' : 'false');
         //await g.sample(10000);
-        await g.sampleWithWorker('../dist/worker.js', 10000);
+        await g.sampleWithWorker(10000);
         this.updateProbs(g);
       });
     }
@@ -502,7 +641,7 @@ class IntegrationTest {
     ]);
 
     this._format = new Intl.NumberFormat('en-US', {maximumFractionDigits: 2});
-    await g.sampleWithWorker('../dist/worker.js', 10000); //likelihood weight sampling aka the inference
+    await g.sampleWithWorker(10000); //likelihood weight sampling aka the inference
     this.updateProbs(g);
   }
 

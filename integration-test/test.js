@@ -31,13 +31,13 @@ export class IntegrationTest {
           g.unobserve(name);
           val.disabled = true;
         }
-        await g.sampleWithWorker('../dist/worker.js', 10000);
+        await g.sampleWithWorker(10000);
         this.updateProbs(g);
       });
       val.addEventListener('change', async () => {
         g.observe(name, val.checked ? 'true' : 'false');
         //await g.sample(10000);
-        await g.sampleWithWorker('../dist/worker.js', 10000);
+        await g.sampleWithWorker(10000);
         this.updateProbs(g);
       });
     }
@@ -96,7 +96,7 @@ export class IntegrationTest {
     ]);
 
     this._format = new Intl.NumberFormat('en-US', {maximumFractionDigits: 2});
-    await g.sampleWithWorker('../dist/worker.js', 10000); //likelihood weight sampling aka the inference
+    await g.sampleWithWorker(10000); //likelihood weight sampling aka the inference
     this.updateProbs(g);
   }
 

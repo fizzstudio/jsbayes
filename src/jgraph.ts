@@ -1,10 +1,13 @@
 
 import { initCptWithParents, JNode } from "./jnode.js";
-import { type WorkerMessage, type WorkerResult } from "./worker.js";
-import workerCode from './worker_code.js';
+import { type WorkerMessage, type WorkerResult, workerCodeWrapper } from "./worker.js";
 
+// Remove the code lines declaring the wrapper function from the
+// worker module source code
+const workerCode = workerCodeWrapper.toString().trim().split('\n').slice(1, -1).join('\n');
+const workerBlob = new Blob([workerCode], { type: 'text/javascript' });
+const workerURL = URL.createObjectURL(workerBlob);
 
-const workerDivId = '__jsbayes_web_worker__';
 
 /** @public */
 export class JGraph {
@@ -13,16 +16,6 @@ export class JGraph {
   public saveSamples = false;
   public samples: { [nodeName: string]: any }[] = [];
   public nodeMap: { [nodeName: string]: JNode } = {};
-
-  constructor() {
-    if (!document.getElementById(workerDivId)) {
-      const div = document.createElement('div');
-      div.id = workerDivId;
-      div.style.display = 'none';
-      div.textContent = workerCode;
-      document.body.append(div);
-    }
-  }
 
   reinit() {
     this.nodes.forEach(n => {
@@ -165,12 +158,8 @@ export class JGraph {
   }
 
   async sampleWithWorker(samples: number): Promise<void> {
-    return new Promise((res, rej) => {
-      const blob = new Blob([
-        document.getElementById(workerDivId)!.textContent!],
-        { type: 'text/javascript' }
-      );
-      const worker = new Worker(URL.createObjectURL(blob), {type: 'module'});
+    return new Promise(res => {
+      const worker = new Worker(workerURL, {type: 'module'});
       worker.onerror = e => {
         console.error(e);
       };

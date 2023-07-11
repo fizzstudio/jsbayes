@@ -2,14 +2,19 @@
 
 /** @internal */
 export interface WorkerMessage {
-  graph: JGraph;
+  graph: any; // JGraph;
   samples: number;
 }
 
 /** @internal */
 export interface WorkerResult {
-  [nodeName: string]: JNode;
+  [nodeName: string]: any; // JNode;
 }
+
+// This function will never be executed! It simply serves as a wrapper
+// for the worker module source code. 
+
+export function workerCodeWrapper() {
 
 // Since we embed the worker script code within the web page where the module
 // code is running, we need minimal versions of JNode and JGraph here
@@ -141,4 +146,5 @@ function sample(msg: WorkerMessage) {
 
 self.onmessage = function(e) {
   sample(e.data);
+}
 }

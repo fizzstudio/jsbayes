@@ -31,7 +31,7 @@ export class JGraph {
     // (undocumented)
     samplesAsCsv(options: any): string;
     // (undocumented)
-    sampleWithWorker(workerPath: string, samples: number): Promise<void>;
+    sampleWithWorker(samples: number): Promise<void>;
     // (undocumented)
     saveSamples: boolean;
     // (undocumented)

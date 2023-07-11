@@ -31,6 +31,6 @@ export declare class JGraph
 |  [reinit()](./jsbayes.jgraph.reinit.md) |  |  |
 |  [sample(samples)](./jsbayes.jgraph.sample.md) |  |  |
 |  [samplesAsCsv(options)](./jsbayes.jgraph.samplesascsv.md) |  |  |
-|  [sampleWithWorker(workerPath, samples)](./jsbayes.jgraph.samplewithworker.md) |  |  |
+|  [sampleWithWorker(samples)](./jsbayes.jgraph.samplewithworker.md) |  |  |
 |  [unobserve(name)](./jsbayes.jgraph.unobserve.md) |  |  |
 

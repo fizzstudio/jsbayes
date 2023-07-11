@@ -18,7 +18,7 @@
   "homepage": "https://github.com/fizzstudio/jsbayes#readme",
   "type": "module",
   "scripts": {
-    "build": "tsc && api-extractor run --local --verbose && terser dist/worker.js -m -c --module -o dist/worker.js && node src/embed_worker.js",
+    "build": "tsc && api-extractor run --local --verbose",
     "roll": "rollup -c",
     "dev": "rollup -c -w",
     "test": "ava test.js",
@@ -51,7 +51,6 @@
     "ava": "^5.3.1",
     "eslint": "^8.44.0",
     "rollup": "^3.26.0",
-    "terser": "^5.18.2",
     "typescript": "^5.1.6"
   }
 }
