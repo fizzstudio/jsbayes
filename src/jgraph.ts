@@ -1,6 +1,13 @@
 
 import { initCptWithParents, JNode } from "./jnode.js";
-import { type WorkerMessage, type WorkerResult } from "./worker.js";
+import { type WorkerMessage, type WorkerResult, workerCodeWrapper } from "./worker.js";
+
+// Remove the code lines declaring the wrapper function from the
+// worker module source code
+const workerCode = workerCodeWrapper.toString().trim().split('\n').slice(1, -1).join('\n');
+const workerBlob = new Blob([workerCode], { type: 'text/javascript' });
+const workerURL = URL.createObjectURL(workerBlob);
+
 
 /** @public */
 export class JGraph {
@@ -150,11 +157,9 @@ export class JGraph {
     return msg;
   }
 
-  async sampleWithWorker(workerPath: string, samples: number): Promise<void> {
-    // XXX Can Rollup be made to just copy worker.js from 
-    // the node_modules directory?
-    return new Promise((res, rej) => {
-      const worker = new Worker(workerPath, {type: 'module'});
+  async sampleWithWorker(samples: number): Promise<void> {
+    return new Promise(res => {
+      const worker = new Worker(workerURL, {type: 'module'});
       worker.onerror = e => {
         console.error(e);
       };

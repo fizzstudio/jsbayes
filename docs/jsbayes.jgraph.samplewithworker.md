@@ -7,14 +7,13 @@
 **Signature:**
 
 ```typescript
-sampleWithWorker(workerPath: string, samples: number): Promise<void>;
+sampleWithWorker(samples: number): Promise<void>;
 ```
 
 ## Parameters
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  workerPath | string |  |
 |  samples | number |  |
 
 **Returns:**

@@ -1,16 +1,117 @@
 
-import { JNode } from "./jnode.js";
-import { JGraph } from "./jgraph.js";
 
 /** @internal */
 export interface WorkerMessage {
-  graph: JGraph;
+  graph: any; // JGraph;
   samples: number;
 }
 
 /** @internal */
 export interface WorkerResult {
-  [nodeName: string]: JNode;
+  [nodeName: string]: any; // JNode;
+}
+
+// This function will never be executed! It simply serves as a wrapper
+// for the worker module source code. 
+
+export function workerCodeWrapper() {
+
+// Since we embed the worker script code within the web page where the module
+// code is running, we need minimal versions of JNode and JGraph here
+// (so we don't need to serve them separately). I fully recognize the
+// awfulness of this situation.
+
+class JNode {
+
+  public _sampledLw?: number[];
+  public wasSampled = false;
+  public parents: string[] = [];
+  public cpt: any[] = [];
+  public value = -1;
+  public dirty = false;
+  public isObserved = false;
+  public g?: JGraph;
+
+  constructor(public name: string, public values: any[]) {
+  }
+
+  initSampleLw() {
+    this._sampledLw = undefined;
+  }
+    
+  sampleLw(): number {
+    if (this.wasSampled) {
+      return 1;
+    }
+
+    const parentNodes = this.parents.map(pName => this.g!.nodeMap[pName]);
+    let fa = 1;
+    parentNodes.forEach(pa => {
+      fa *= pa.sampleLw();
+    });
+
+    this.wasSampled = true;
+
+    let dh = this.cpt;
+    parentNodes.forEach(pa => {
+      dh = dh[pa.value];
+    });
+
+    if (this.value != -1) {
+      fa *= dh[this.value];
+    } else {
+      let fv = Math.random();
+      for (let h = 0; h < dh.length; h++) {
+        fv -= dh[h];
+        if (fv < 0) {
+          this.value = h;
+          break;
+        }
+      }
+    }
+
+    return fa;
+  }
+  
+  saveSampleLw(f: number) {
+    if (!this._sampledLw) {
+      this._sampledLw = new Array(this.values.length);
+      for (let h = this.values.length - 1; h >= 0; h--) {
+        this._sampledLw[h] = 0;
+      }
+    }
+    this._sampledLw[this.value] += f;
+  }
+}
+
+class JGraph {
+
+  public nodes: JNode[] = [];
+  public nodeMap: { [nodeName: string]: JNode } = {};
+
+  sample(samples: number): number {
+    for (let h = this.nodes.length - 1; h >= 0; h--) {
+      this.nodes[h].initSampleLw();
+    }
+    let lwSum = 0;
+    for (let count = 0; count < samples; count++) {
+      for (let h = this.nodes.length - 1; h >= 0; h--) {
+        const n = this.nodes[h];
+        if (!n.isObserved) {
+          n.value = -1;
+        }
+        n.wasSampled = false;
+      }
+      const fa = this.nodes.reduceRight((prod, n) => prod * n.sampleLw(), 1);
+      lwSum += fa;
+      for (let h = this.nodes.length - 1; h >= 0; h--) {
+        const n = this.nodes[h];
+        n.saveSampleLw(fa);
+      }
+    }
+    return lwSum;
+  }
+  
 }
 
 function toGraph(msg: WorkerMessage) {
@@ -29,10 +130,6 @@ function toGraph(msg: WorkerMessage) {
     return newNode;
   });
   g.nodes = nodes;    
-  //console.log(nodes[0].g);
-  //console.log(nodes[1].g);
-  //console.log('equal', Object.is(nodes[0], nodes[0].g.nodes[0]));
-  //const g = new JGraph();
   return g;
 }
 
@@ -49,4 +146,5 @@ function sample(msg: WorkerMessage) {
 
 self.onmessage = function(e) {
   sample(e.data);
+}
 }
